@@ -1,0 +1,654 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FactReel — YouTube playlist with fact overlays</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #171922;
+    --panel-2: #1f2230;
+    --line: #2b2f40;
+    --text: #e7e9ee;
+    --muted: #9aa0b0;
+    --accent: #58c9ff;
+    --accent-ink: #04202c;
+    --danger: #ff6b6b;
+    --radius: 10px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); }
+
+  /* ---------- Layout ---------- */
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  header.top h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-top: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  .field .hint { font-size: 11px; color: var(--muted); }
+
+  input[type=text], input[type=number], select, textarea {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 10px; font-size: 14px; font-family: inherit;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent;
+  }
+  textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
+
+  button {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 14px; font-size: 14px; cursor: pointer;
+    font-family: inherit; transition: background .12s, border-color .12s, transform .05s;
+  }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  button.ghost { background: transparent; }
+  button.danger { color: var(--danger); border-color: transparent; }
+  button.danger:hover { border-color: var(--danger); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .spacer { flex: 1; }
+
+  /* ---------- Video editor cards ---------- */
+  .videos { display: flex; flex-direction: column; gap: 14px; }
+  .video { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .video .vhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .video .vhead .idx { width: 26px; height: 26px; border-radius: 50%; background: var(--panel);
+    border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; color: var(--muted); flex: none; }
+  .video .vhead .grow { flex: 1; }
+  .video .vgrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 680px) { .video .vgrid { grid-template-columns: 1fr 1fr; } }
+  .video .thumb { display: flex; gap: 12px; align-items: center; font-size: 12px; color: var(--muted); }
+  .video .thumb img { width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; background: #000; border: 1px solid var(--line); }
+  .factcount { font-size: 12px; color: var(--muted); }
+
+  .banner { font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-top: 12px; display: none; }
+  .banner.err { background: #3a1a1f; color: #ffb4b4; display: block; }
+  .banner.ok  { background: #123122; color: #9ff0c0; display: block; }
+
+  /* ================= PLAYER STAGE ================= */
+  #stage { position: fixed; inset: 0; background: #000; display: none; z-index: 1000; }
+  #stage.active { display: block; }
+  #player-mount { position: absolute; inset: 0; }
+  #player-mount iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* Overlay layer sits above the video; clicks pass through to player controls */
+  #overlay { position: absolute; inset: 0; pointer-events: none; z-index: 10;
+    display: flex; align-items: flex-end; justify-content: center; padding: 0 4vw 12vh; }
+
+  .factbox { width: 75vw; max-width: 75vw; text-align: center; opacity: 0; transform: translateY(14px);
+    transition: opacity .45s ease, transform .45s ease; }
+  .factbox.show { opacity: 1; transform: translateY(0); }
+  .factbox .txt { font-size: clamp(18px, 3.1vw, 34px); line-height: 1.32; }
+
+  /* HUD: minimal controls, only while cursor is active */
+  #hud { position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,0));
+    opacity: 0; transition: opacity .25s; }
+  #stage.show-hud #hud { opacity: 1; }
+  #hud .title { font-size: 13px; color: #fff; opacity: .9; }
+  #hud .count { font-size: 12px; color: #cfd3dd; }
+  #hud .grow { flex: 1; }
+  #hud button { background: rgba(0,0,0,.5); color: #fff; border-color: rgba(255,255,255,.25); backdrop-filter: blur(4px); }
+  #hud button:hover { border-color: #fff; }
+
+  /* ---------------- THEMES (fact box styles) ---------------- */
+  /* Base vars each theme overrides */
+  .factbox { --fb-bg: rgba(10,12,18,.72); --fb-border: #58c9ff; --fb-text: #d6f2ff;
+    --fb-radius: 14px; --fb-border-w: 2px; --fb-pad: 18px 26px; --fb-font: inherit;
+    --fb-weight: 600; --fb-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  .factbox .txt {
+    background: var(--fb-bg); color: var(--fb-text);
+    border: var(--fb-border-w) solid var(--fb-border); border-radius: var(--fb-radius);
+    padding: var(--fb-pad); font-family: var(--fb-font); font-weight: var(--fb-weight);
+    box-shadow: var(--fb-shadow); backdrop-filter: blur(3px);
+    text-wrap: balance;
+  }
+
+  /* tv — matches the reference screenshot */
+  [data-theme="tv"] .factbox { --fb-bg: rgba(8,10,16,.80); --fb-border: #7fd6ff; --fb-text: #eaf9ff;
+    --fb-radius: 16px; --fb-border-w: 2px; --fb-weight: 700; }
+
+  /* lower-third — wide bar near the bottom, TV news style */
+  [data-theme="lower-third"] .factbox { --fb-bg: rgba(12,14,22,.86); --fb-border: transparent; --fb-text: #fff;
+    --fb-radius: 6px; --fb-pad: 16px 28px; --fb-weight: 600; }
+  [data-theme="lower-third"] .factbox .txt { border-left: 6px solid #ff477e; text-align: left; }
+  [data-theme="lower-third"] #overlay { justify-content: flex-start; padding-left: 6vw; }
+
+  /* neon */
+  [data-theme="neon"] .factbox { --fb-bg: rgba(6,4,20,.72); --fb-border: #b980ff; --fb-text: #f2e9ff;
+    --fb-radius: 12px; --fb-border-w: 2px;
+    --fb-shadow: 0 0 22px rgba(150,90,255,.55), inset 0 0 14px rgba(150,90,255,.25); }
+
+  /* minimal-light */
+  [data-theme="minimal"] .factbox { --fb-bg: rgba(255,255,255,.92); --fb-border: #d9dee8; --fb-text: #14161c;
+    --fb-radius: 10px; --fb-weight: 600; --fb-shadow: 0 10px 30px rgba(0,0,0,.35); }
+
+  /* typewriter */
+  [data-theme="typewriter"] .factbox { --fb-bg: rgba(20,16,10,.82); --fb-border: #e8c07d; --fb-text: #f6e7c9;
+    --fb-radius: 4px; --fb-font: 'Courier New', ui-monospace, monospace; --fb-weight: 700; }
+
+  .theme-preview { margin-top: 6px; }
+</style>
+
+<!-- =================== SETUP / EDITOR =================== -->
+<div class="wrap" id="editor">
+  <header class="top">
+    <div>
+      <h1>🎞️ FactReel</h1>
+      <div class="sub">Play a YouTube playlist fullscreen with fact overlays spread evenly across each video.</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div class="field" style="flex:1; min-width:220px;">
+        <label for="plTitle">Playlist title</label>
+        <input type="text" id="plTitle" placeholder="My playlist" />
+      </div>
+      <div class="field">
+        <label for="plTheme">Fact box theme</label>
+        <select id="plTheme">
+          <option value="tv">TV caption (reference)</option>
+          <option value="lower-third">Lower third</option>
+          <option value="neon">Neon</option>
+          <option value="minimal">Minimal light</option>
+          <option value="typewriter">Typewriter</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="plDur">Fact display (sec)</label>
+        <input type="number" id="plDur" min="2" max="60" step="1" value="8" style="width:110px" />
+      </div>
+    </div>
+    <div class="theme-preview" id="themePreview"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content: space-between;">
+      <strong>Videos</strong>
+      <span class="factcount" id="summary"></span>
+    </div>
+    <div class="videos" id="videos"></div>
+    <div class="toolbar">
+      <button id="addVideo">+ Add video</button>
+    </div>
+  </div>
+
+  <div id="banner" class="banner"></div>
+
+  <div class="toolbar">
+    <button class="primary" id="play">▶ Play playlist</button>
+    <div class="spacer"></div>
+    <button class="ghost" id="loadExample">Load example</button>
+    <button class="ghost" id="importBtn">Import JSON</button>
+    <button class="ghost" id="exportBtn">Export JSON</button>
+    <button class="danger ghost" id="clearBtn">Clear</button>
+    <input type="file" id="importFile" accept="application/json" hidden />
+  </div>
+</div>
+
+<!-- =================== PLAYER STAGE =================== -->
+<div id="stage">
+  <div id="player-mount"></div>
+  <div id="overlay"><div class="factbox"><div class="txt"></div></div></div>
+  <div id="hud">
+    <span class="title" id="hudTitle"></span>
+    <span class="count" id="hudCount"></span>
+    <div class="grow"></div>
+    <button id="prevBtn" title="Previous video">⏮</button>
+    <button id="nextBtn" title="Next video">⏭</button>
+    <button id="exitBtn" title="Exit (Esc)">✕ Exit</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   FactReel — single-file YouTube playlist + fact overlays
+   ============================================================ */
+
+const STORAGE_KEY = 'factreel.playlist.v1';
+
+/* ---------- State ---------- */
+let state = {
+  title: '',
+  theme: 'tv',
+  factDuration: 8,
+  videos: [],            // [{ url, facts: [] }]
+};
+
+/* ---------- YouTube URL / ID parsing ---------- */
+function parseVideoId(input) {
+  if (!input) return null;
+  input = input.trim();
+  // Raw 11-char id
+  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+  try {
+    const u = new URL(input);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1, 12) || null;
+    if (u.searchParams.get('v')) return u.searchParams.get('v');
+    const m = u.pathname.match(/\/(embed|shorts|v)\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[2];
+  } catch (_) { /* not a URL */ }
+  const m = input.match(/([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function thumbUrl(id) { return `https://i.ytimg.com/vi/${id}/mqdefault.jpg`; }
+
+/* ---------- Persistence ---------- */
+function save() {
+  readEditorIntoState();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) state = normalize(JSON.parse(raw));
+  } catch (_) {}
+}
+function normalize(obj) {
+  const s = { title: '', theme: 'tv', factDuration: 8, videos: [] };
+  if (!obj || typeof obj !== 'object') return s;
+  s.title = String(obj.title || '');
+  s.theme = ['tv','lower-third','neon','minimal','typewriter'].includes(obj.theme) ? obj.theme : 'tv';
+  s.factDuration = Math.min(60, Math.max(2, Number(obj.factDuration) || 8));
+  if (Array.isArray(obj.videos)) {
+    s.videos = obj.videos.map(v => ({
+      url: String(v.url || v.id || ''),
+      facts: Array.isArray(v.facts) ? v.facts.map(f => String(f)).filter(f => f.trim()) : [],
+    }));
+  }
+  return s;
+}
+
+/* ---------- Editor rendering ---------- */
+const $ = sel => document.querySelector(sel);
+const videosEl = $('#videos');
+
+function renderEditor() {
+  $('#plTitle').value = state.title;
+  $('#plTheme').value = state.theme;
+  $('#plDur').value = state.factDuration;
+  videosEl.innerHTML = '';
+  if (state.videos.length === 0) addVideoRow('', []);
+  else state.videos.forEach(v => addVideoRow(v.url, v.facts));
+  renderPreview();
+  updateSummary();
+}
+
+function addVideoRow(url = '', facts = []) {
+  const idx = videosEl.children.length + 1;
+  const el = document.createElement('div');
+  el.className = 'video';
+  el.innerHTML = `
+    <div class="vhead">
+      <div class="idx">${idx}</div>
+      <div class="grow"></div>
+      <button class="ghost btn-up" title="Move up">↑</button>
+      <button class="ghost btn-down" title="Move down">↓</button>
+      <button class="danger ghost btn-del" title="Remove">Remove</button>
+    </div>
+    <div class="vgrid">
+      <div class="field">
+        <label>YouTube URL or video ID</label>
+        <input type="text" class="v-url" placeholder="https://www.youtube.com/watch?v=..." />
+        <div class="thumb"><img class="v-thumb" alt="" hidden /><span class="v-idinfo"></span></div>
+      </div>
+      <div class="field">
+        <label>Facts <span class="hint">— one per line, shown in order, spread across the video</span></label>
+        <textarea class="v-facts" placeholder="First fact...&#10;Second fact...&#10;Third fact..."></textarea>
+        <span class="factcount v-fc"></span>
+      </div>
+    </div>`;
+  el.querySelector('.v-url').value = url;
+  el.querySelector('.v-facts').value = facts.join('\n');
+
+  const urlInput = el.querySelector('.v-url');
+  const factsInput = el.querySelector('.v-facts');
+  const refresh = () => { updateThumb(el); updateFactCount(el); save(); updateSummary(); };
+  urlInput.addEventListener('input', refresh);
+  factsInput.addEventListener('input', refresh);
+  el.querySelector('.btn-del').addEventListener('click', () => { el.remove(); reindex(); save(); updateSummary(); });
+  el.querySelector('.btn-up').addEventListener('click', () => { const p = el.previousElementSibling; if (p) el.parentNode.insertBefore(el, p); reindex(); save(); });
+  el.querySelector('.btn-down').addEventListener('click', () => { const n = el.nextElementSibling; if (n) el.parentNode.insertBefore(n, el); reindex(); save(); });
+
+  videosEl.appendChild(el);
+  updateThumb(el); updateFactCount(el);
+}
+
+function reindex() { [...videosEl.children].forEach((el, i) => el.querySelector('.idx').textContent = i + 1); }
+function updateThumb(el) {
+  const id = parseVideoId(el.querySelector('.v-url').value);
+  const img = el.querySelector('.v-thumb');
+  const info = el.querySelector('.v-idinfo');
+  if (id) { img.src = thumbUrl(id); img.hidden = false; info.textContent = 'ID: ' + id; }
+  else { img.hidden = true; info.textContent = el.querySelector('.v-url').value.trim() ? '⚠ Unrecognized URL' : ''; }
+}
+function updateFactCount(el) {
+  const n = el.querySelector('.v-facts').value.split('\n').map(s => s.trim()).filter(Boolean).length;
+  el.querySelector('.v-fc').textContent = n + (n === 1 ? ' fact' : ' facts');
+}
+function updateSummary() {
+  const s = readEditorIntoState(true);
+  const valid = s.videos.filter(v => parseVideoId(v.url));
+  const facts = s.videos.reduce((a, v) => a + v.facts.length, 0);
+  $('#summary').textContent = `${valid.length} video${valid.length===1?'':'s'} · ${facts} fact${facts===1?'':'s'}`;
+}
+
+/* Read DOM -> state. If peek=true, don't mutate global state. */
+function readEditorIntoState(peek = false) {
+  const s = {
+    title: $('#plTitle').value,
+    theme: $('#plTheme').value,
+    factDuration: Math.min(60, Math.max(2, Number($('#plDur').value) || 8)),
+    videos: [...videosEl.children].map(el => ({
+      url: el.querySelector('.v-url').value.trim(),
+      facts: el.querySelector('.v-facts').value.split('\n').map(f => f.trim()).filter(Boolean),
+    })),
+  };
+  if (!peek) state = s;
+  return s;
+}
+
+/* ---------- Theme preview ---------- */
+function renderPreview() {
+  const theme = $('#plTheme').value;
+  const host = $('#themePreview');
+  host.innerHTML = `
+    <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
+                background:#0a0a0f url('https://i.ytimg.com/vi/_/mqdefault.jpg') center/cover;
+                min-height:150px; display:flex; align-items:flex-end; justify-content:center; padding:0 20px 20px;"
+         data-theme="${theme}">
+      <div class="factbox show" style="position:relative;">
+        <div class="txt">The song was a late addition to the album, added because it needed a catchier single.</div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:6px; color:var(--muted); font-size:11px;">Live preview of the “${theme}” theme.</div>`;
+}
+
+/* ---------- Import / Export ---------- */
+function exportJSON() {
+  save();
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.title || 'playlist').replace(/[^\w.-]+/g, '_') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { state = normalize(JSON.parse(reader.result)); renderEditor(); save(); banner('Playlist imported.', 'ok'); }
+    catch (e) { banner('Could not parse JSON: ' + e.message, 'err'); }
+  };
+  reader.readAsText(file);
+}
+function banner(msg, kind) {
+  const b = $('#banner');
+  b.textContent = msg; b.className = 'banner ' + kind;
+  clearTimeout(banner._t); banner._t = setTimeout(() => { b.className = 'banner'; }, 4000);
+}
+
+const EXAMPLE = {
+  title: 'Pop-punk facts',
+  theme: 'tv',
+  factDuration: 8,
+  videos: [
+    { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      facts: [
+        'This is a sample fact — replace the video and facts with your own.',
+        'Facts are spread evenly across the video’s duration automatically.',
+        'Each fact shows for the number of seconds set at the top.',
+        'Add as many facts as you like; timing recalculates to fit.',
+      ] },
+  ],
+};
+
+/* ============================================================
+   PLAYER
+   ============================================================ */
+let player = null;            // YT.Player instance
+let ytReady = false;
+let queuedStart = false;
+let current = -1;             // index into playState.videos
+let scheduledFor = -1;        // which video index `schedule` was built for
+let schedule = [];            // [{ text, start, end }]
+let activeFact = -1;
+let tickTimer = null;
+let playState = null;         // snapshot used during playback
+
+const stage = $('#stage');
+const overlay = $('#overlay');
+const factBox = overlay.querySelector('.factbox');
+const factTxt = factBox.querySelector('.txt');
+
+/* YouTube API bootstrap */
+function loadYT() {
+  if (window.YT && window.YT.Player) { ytReady = true; return; }
+  if (document.getElementById('yt-api')) return;
+  const tag = document.createElement('script');
+  tag.id = 'yt-api';
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = function () {
+  ytReady = true;
+  if (queuedStart) { queuedStart = false; beginPlayback(); }
+};
+
+function startPlaylist() {
+  save();
+  playState = normalize(state);
+  playState.videos = playState.videos.filter(v => parseVideoId(v.url));
+  if (playState.videos.length === 0) { banner('Add at least one valid YouTube video first.', 'err'); return; }
+
+  overlay.dataset.theme = playState.theme;
+  stage.classList.add('active');
+  requestFS(stage);
+  attachHudReveal();
+
+  loadYT();
+  if (ytReady) beginPlayback();
+  else queuedStart = true;
+}
+
+function beginPlayback() {
+  current = 0;
+  scheduledFor = -1;
+  schedule = [];
+  activeFact = -1;
+  clearInterval(tickTimer);
+  factBox.classList.remove('show');
+  const firstId = parseVideoId(playState.videos[0].url);
+  // YT.Player REPLACES its target element with the iframe. Keep #player-mount as a
+  // stable container and give the API a fresh child to consume each run, so exiting
+  // and replaying can't destroy the mount.
+  if (player) { try { player.destroy(); } catch (_) {} player = null; }
+  const mount = document.getElementById('player-mount');
+  mount.innerHTML = '<div id="yt-target"></div>';
+  player = new YT.Player('yt-target', {
+    width: '100%', height: '100%',
+    videoId: firstId,
+    playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3 },
+    events: {
+      onReady: (e) => { e.target.playVideo(); onVideoLoaded(); },
+      onStateChange: onStateChange,
+    },
+  });
+}
+
+function onStateChange(e) {
+  if (e.data === YT.PlayerState.ENDED) nextVideo();
+  else if (e.data === YT.PlayerState.PLAYING) onVideoLoaded();
+}
+
+/* Called when a video is ready/playing. Builds the fact schedule from its duration
+   ONCE per video — later PLAYING events (e.g. after a seek or pause) must not reset
+   the active fact, or a visible fact could get stranded on screen. */
+function onVideoLoaded() {
+  const dur = player.getDuration();
+  if (!dur || dur < 1) return;               // duration not ready yet
+  disableCaptions();                          // force closed captions off (runs every PLAYING)
+  if (scheduledFor !== current) {
+    schedule = computeSchedule(dur, playState.videos[current].facts, playState.factDuration);
+    scheduledFor = current;
+    activeFact = -1;
+    factBox.classList.remove('show');
+    updateHud();
+    // The caption module loads asynchronously after a video starts, so re-assert.
+    [200, 800, 1600, 3000].forEach(d => setTimeout(disableCaptions, d));
+  }
+  startTick();
+}
+
+/* Force YouTube's closed captions off: clear any active track, then unload the module.
+   Called on every PLAYING event and re-asserted on a short timer after each video. */
+function disableCaptions() {
+  if (!player) return;
+  try { player.setOption('captions', 'track', {}); } catch (_) {}
+  try { player.setOption('cc', 'track', {}); } catch (_) {}
+  try { player.unloadModule('captions'); } catch (_) {}
+  try { player.unloadModule('cc'); } catch (_) {}
+}
+
+/* Cheap per-tick check: if a caption track has (re)appeared — a new video, or the
+   viewer's account defaulting captions on — clear it. Keeps CC reliably off. */
+function enforceCaptionsOff() {
+  if (!player || !player.getOption) return;
+  let track;
+  try { track = player.getOption('captions', 'track'); } catch (_) { return; }  // module unloaded = off
+  if (track && track.languageCode) disableCaptions();
+}
+
+function computeSchedule(duration, facts, factDuration) {
+  const n = facts.length;
+  if (!n) return [];
+  const first = Math.min(3, duration * 0.03);            // first caption appears early (well within 10s)
+  const last = Math.max(first, duration - factDuration - 0.5);
+  return facts.map((text, i) => {
+    const start = n === 1 ? first : first + (i / (n - 1)) * (last - first);
+    return { text, start, end: Math.min(duration - 0.3, start + factDuration) };
+  });
+}
+
+function startTick() {
+  clearInterval(tickTimer);
+  tickTimer = setInterval(tick, 200);
+}
+function tick() {
+  if (!player || !player.getCurrentTime) return;
+  enforceCaptionsOff();
+  const t = player.getCurrentTime();
+  // find the last fact whose window contains t
+  let idx = -1;
+  for (let i = 0; i < schedule.length; i++) {
+    if (t >= schedule[i].start && t < schedule[i].end) idx = i;
+  }
+  if (idx !== activeFact) {
+    activeFact = idx;
+    if (idx === -1) factBox.classList.remove('show');
+    else { factTxt.textContent = schedule[idx].text; factBox.classList.add('show'); }
+    updateHud();
+  }
+}
+
+function loadVideoAt(i) {
+  if (i < 0 || i >= playState.videos.length) return;
+  current = i;
+  activeFact = -1; factBox.classList.remove('show');
+  clearInterval(tickTimer);
+  player.loadVideoById(parseVideoId(playState.videos[i].url));
+  updateHud();
+}
+function nextVideo() {
+  if (current + 1 < playState.videos.length) loadVideoAt(current + 1);
+  else exitPlayer();                          // end of playlist
+}
+function prevVideo() { if (current > 0) loadVideoAt(current - 1); }
+
+function updateHud() {
+  $('#hudTitle').textContent = playState.title || 'FactReel';
+  const factInfo = schedule.length ? ` · fact ${Math.max(activeFact, 0) + (activeFact >= 0 ? 1 : 0)}/${schedule.length}` : ' · no facts';
+  $('#hudCount').textContent = `Video ${current + 1}/${playState.videos.length}${factInfo}`;
+}
+
+/* Fullscreen helpers */
+function requestFS(el) {
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (fn) { try { fn.call(el); } catch (_) {} }
+}
+function exitFS() {
+  if (document.fullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen || (()=>{})).call(document); }
+}
+
+function exitPlayer() {
+  clearInterval(tickTimer);
+  exitFS();
+  stage.classList.remove('active');
+  factBox.classList.remove('show');
+  if (player) { try { player.stopVideo(); } catch (_) {} }
+}
+
+/* Reveal HUD on mouse move, auto-hide */
+function attachHudReveal() {
+  let hideT;
+  const show = () => {
+    stage.classList.add('show-hud');
+    clearTimeout(hideT);
+    hideT = setTimeout(() => stage.classList.remove('show-hud'), 2500);
+  };
+  stage.addEventListener('mousemove', show);
+  show();
+}
+
+document.addEventListener('fullscreenchange', () => {
+  // If the user exits fullscreen via Esc, also leave the player stage.
+  if (!document.fullscreenElement && stage.classList.contains('active')) exitPlayer();
+});
+document.addEventListener('keydown', (e) => {
+  if (!stage.classList.contains('active')) return;
+  if (e.key === 'ArrowRight') nextVideo();
+  else if (e.key === 'ArrowLeft') prevVideo();
+});
+
+/* ============================================================
+   Wire up UI
+   ============================================================ */
+$('#plTitle').addEventListener('input', save);
+$('#plDur').addEventListener('input', save);
+$('#plTheme').addEventListener('change', () => { save(); renderPreview(); });
+$('#addVideo').addEventListener('click', () => { addVideoRow('', []); save(); updateSummary(); });
+$('#play').addEventListener('click', startPlaylist);
+$('#exportBtn').addEventListener('click', exportJSON);
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', (e) => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+$('#loadExample').addEventListener('click', () => { state = normalize(EXAMPLE); renderEditor(); save(); banner('Example loaded.', 'ok'); });
+$('#clearBtn').addEventListener('click', () => { if (confirm('Clear the whole playlist?')) { state = normalize({}); renderEditor(); save(); } });
+$('#prevBtn').addEventListener('click', prevVideo);
+$('#nextBtn').addEventListener('click', nextVideo);
+$('#exitBtn').addEventListener('click', exitPlayer);
+
+/* Boot. A ?playlist=<path-or-url> query param loads that JSON directly; otherwise
+   the last-used playlist is restored from localStorage. */
+load();
+renderEditor();
+const plParam = new URLSearchParams(location.search).get('playlist');
+if (plParam) {
+  fetch(plParam)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(data => { state = normalize(data); renderEditor(); save(); banner('Loaded playlist from URL.', 'ok'); })
+    .catch(err => banner('Could not load playlist "' + plParam + '": ' + err.message, 'err'));
+}
+</script>

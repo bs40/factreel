@@ -1,0 +1,23 @@
+{
+  "title": "Pop-punk facts",
+  "theme": "tv",
+  "factDuration": 8,
+  "videos": [
+    {
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "facts": [
+        "This is a sample fact — replace the video URL and facts with your own.",
+        "Facts are spread evenly across the video's duration automatically.",
+        "Each fact stays on screen for the number of seconds set by factDuration.",
+        "Add as many facts as you like; the timing recalculates to fit the video."
+      ]
+    },
+    {
+      "url": "https://youtu.be/ VIDEO_ID_HERE ",
+      "facts": [
+        "The second video's facts are timed against its own length.",
+        "You can paste a full URL, a youtu.be short link, or a bare 11-char video ID."
+      ]
+    }
+  ]
+}

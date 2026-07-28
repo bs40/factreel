@@ -1,0 +1,40 @@
+{
+  "title": "Pop hits — the stories behind the videos",
+  "theme": "tv",
+  "factDuration": 20,
+  "videos": [
+    {
+      "url": "https://www.youtube.com/watch?v=nTizYn3-QN0",
+      "facts": [
+        "Duran Duran — \"Rio\" (1982)",
+        "\"Rio\" isn't about the Brazilian city — the name is a metaphor for America, the market Duran Duran were desperate to crack: \"from the mountains in the north down to the Rio Grande.\"",
+        "The video was shot over three days in May 1982 off Antigua, aboard a 1936 wooden Fife yacht called the Eilean — later rescued and restored by an Italian watch company in 2009.",
+        "Keyboardist Nick Rhodes was seasick through much of the shoot: \"I hate boats unless they're tied up and you're having cocktails on them.\"",
+        "During a break in filming, Simon Le Bon and John Taylor went for a swim and were hauled out of the water just as sharks closed in.",
+        "The crew ran out of film stock, so John Taylor's saxophone scene on the mountaintop was shot on a camera borrowed from a passing tourist."
+      ]
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=BnO3nijfYmU",
+      "facts": [
+        "Robbie Williams — \"Rock DJ\" (2000)",
+        "\"Rock DJ\" was Robbie Williams' third UK No.1 and won British Single of the Year at the 2001 BRIT Awards.",
+        "The track is built on samples: Barry White's \"It's Ecstasy When You Lay Down Next to Me,\" A Tribe Called Quest's \"Can I Kick It?\", and a line from Slick Rick & Doug E. Fresh's \"La Di Da Di.\"",
+        "In the video Robbie strips naked to win a DJ's attention — and when that fails, he peels off his own skin and muscle until he's just a dancing skeleton.",
+        "The gory ending got the video cut or banned on most TV channels, and banned outright in the Dominican Republic over accusations of Satanism.",
+        "Lorde later said her 2021 single \"Solar Power\" was directly inspired by \"Rock DJ.\""
+      ]
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=CduA0TULnow",
+      "facts": [
+        "Britney Spears — \"Oops!... I Did It Again\" (2000)",
+        "\"Oops!... I Did It Again\" was written and produced by Max Martin and Rami Yacoub as the lead single from Britney's second album (April 2000).",
+        "The entire video is set on Mars, directed by Nigel Dick, with Britney dancing on the red planet in a now-iconic red catsuit.",
+        "The catsuit was Britney's own idea — she told the director: \"I want to be in a red jumpsuit... but there can't be any rockets.\"",
+        "The spoken bridge is a nod to Titanic: an astronaut hands Britney the \"Heart of the Ocean\" necklace that Rose threw into the sea.",
+        "The single hit No.1 in more than 20 countries and earned a 2001 Grammy nomination for Best Female Pop Vocal Performance."
+      ]
+    }
+  ]
+}
