@@ -55,8 +55,10 @@
   button.danger { color: var(--danger); border-color: transparent; }
   button.danger:hover { border-color: var(--danger); }
 
-  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
   .spacer { flex: 1; }
+  .playfrom { color: var(--muted); font-size: 13px; }
+  #startAt { max-width: 340px; min-width: 0; }
 
   /* ---------- Video editor cards ---------- */
   .videos { display: flex; flex-direction: column; gap: 14px; }
@@ -102,41 +104,63 @@
   #hud button { background: rgba(0,0,0,.5); color: #fff; border-color: rgba(255,255,255,.25); backdrop-filter: blur(4px); }
   #hud button:hover { border-color: #fff; }
 
-  /* ---------------- THEMES (fact box styles) ---------------- */
-  /* Base vars each theme overrides */
-  .factbox { --fb-bg: rgba(10,12,18,.72); --fb-border: #58c9ff; --fb-text: #d6f2ff;
-    --fb-radius: 14px; --fb-border-w: 2px; --fb-pad: 18px 26px; --fb-font: inherit;
-    --fb-weight: 600; --fb-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  /* ---------------- THEMES (shared by the fact box AND the clock) ----------------
+     Theme vars live on the [data-theme] element (the stage or a preview host) so both
+     the caption box and the progress clock inherit them. Defaults use :where() (zero
+     specificity) so any [data-theme="x"] block overrides them. */
+  :where([data-theme]) {
+    --fb-bg: rgba(10,12,18,.72); --fb-border: #58c9ff; --fb-text: #d6f2ff;
+    --fb-radius: 14px; --fb-border-w: 2px; --fb-pad-y: 18px; --fb-pad-x: 26px;
+    --fb-font: inherit; --fb-weight: 600; --fb-shadow: 0 8px 30px rgba(0,0,0,.45);
+    --fb-fs: clamp(18px, 3.1vw, 34px);        /* caption font size — also sizes the clock */
+    --fb-fill: rgba(255,255,255,.26);         /* clock's elapsed-sector fill */
+  }
   .factbox .txt {
     background: var(--fb-bg); color: var(--fb-text);
     border: var(--fb-border-w) solid var(--fb-border); border-radius: var(--fb-radius);
-    padding: var(--fb-pad); font-family: var(--fb-font); font-weight: var(--fb-weight);
-    box-shadow: var(--fb-shadow); backdrop-filter: blur(3px);
+    padding: var(--fb-pad-y) var(--fb-pad-x); font-family: var(--fb-font); font-weight: var(--fb-weight);
+    font-size: var(--fb-fs); box-shadow: var(--fb-shadow); backdrop-filter: blur(3px);
     text-wrap: balance;
   }
 
   /* tv — matches the reference screenshot */
-  [data-theme="tv"] .factbox { --fb-bg: rgba(8,10,16,.80); --fb-border: #7fd6ff; --fb-text: #eaf9ff;
-    --fb-radius: 16px; --fb-border-w: 2px; --fb-weight: 700; }
+  [data-theme="tv"] { --fb-bg: rgba(8,10,16,.80); --fb-border: #7fd6ff; --fb-text: #eaf9ff;
+    --fb-radius: 16px; --fb-weight: 700; --fb-fill: rgba(127,214,255,.30); }
 
   /* lower-third — wide bar near the bottom, TV news style */
-  [data-theme="lower-third"] .factbox { --fb-bg: rgba(12,14,22,.86); --fb-border: transparent; --fb-text: #fff;
-    --fb-radius: 6px; --fb-pad: 16px 28px; --fb-weight: 600; }
-  [data-theme="lower-third"] .factbox .txt { border-left: 6px solid #ff477e; text-align: left; }
+  [data-theme="lower-third"] { --fb-bg: rgba(12,14,22,.86); --fb-border: #ff477e; --fb-text: #fff;
+    --fb-radius: 6px; --fb-pad-y: 16px; --fb-pad-x: 28px; --fb-weight: 600; --fb-fill: rgba(255,71,126,.35); }
+  [data-theme="lower-third"] .factbox .txt { border: none; border-left: 6px solid #ff477e; text-align: left; }
   [data-theme="lower-third"] #overlay { justify-content: flex-start; padding-left: 6vw; }
 
   /* neon */
-  [data-theme="neon"] .factbox { --fb-bg: rgba(6,4,20,.72); --fb-border: #b980ff; --fb-text: #f2e9ff;
-    --fb-radius: 12px; --fb-border-w: 2px;
+  [data-theme="neon"] { --fb-bg: rgba(6,4,20,.72); --fb-border: #b980ff; --fb-text: #f2e9ff;
+    --fb-radius: 12px; --fb-fill: rgba(150,90,255,.32);
     --fb-shadow: 0 0 22px rgba(150,90,255,.55), inset 0 0 14px rgba(150,90,255,.25); }
 
   /* minimal-light */
-  [data-theme="minimal"] .factbox { --fb-bg: rgba(255,255,255,.92); --fb-border: #d9dee8; --fb-text: #14161c;
-    --fb-radius: 10px; --fb-weight: 600; --fb-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  [data-theme="minimal"] { --fb-bg: rgba(255,255,255,.92); --fb-border: #b7c0d0; --fb-text: #14161c;
+    --fb-radius: 10px; --fb-weight: 600; --fb-shadow: 0 10px 30px rgba(0,0,0,.35); --fb-fill: rgba(20,22,28,.28); }
 
   /* typewriter */
-  [data-theme="typewriter"] .factbox { --fb-bg: rgba(20,16,10,.82); --fb-border: #e8c07d; --fb-text: #f6e7c9;
-    --fb-radius: 4px; --fb-font: 'Courier New', ui-monospace, monospace; --fb-weight: 700; }
+  [data-theme="typewriter"] { --fb-bg: rgba(20,16,10,.82); --fb-border: #e8c07d; --fb-text: #f6e7c9;
+    --fb-radius: 4px; --fb-font: 'Courier New', ui-monospace, monospace; --fb-weight: 700; --fb-fill: rgba(232,192,125,.30); }
+
+  /* ---- progress clock (bottom-right): single hand sweeping a full circle over the
+     song, from 12 o'clock (empty) to 12 o'clock (full). Diameter = single-line banner
+     height; colours follow the active theme. ---- */
+  #clock { position: absolute; right: 3vw; bottom: 12vh; z-index: 15; pointer-events: none;
+    /* diameter == single-line banner height: line-height*font + vertical padding + top/bottom border */
+    width:  calc(1.32 * var(--fb-fs) + 2 * var(--fb-pad-y) + 2 * var(--fb-border-w));
+    height: calc(1.32 * var(--fb-fs) + 2 * var(--fb-pad-y) + 2 * var(--fb-border-w));
+    display: none; }
+  #stage.active #clock { display: block; }
+  #clock svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 14px rgba(0,0,0,.45)); }
+  #clock .face { fill: var(--fb-bg); stroke: var(--fb-border); stroke-width: var(--fb-border-w); vector-effect: non-scaling-stroke; }
+  #clock .fill { fill: var(--fb-fill); }
+  #clock .mark { stroke: var(--fb-text); stroke-width: 2px; vector-effect: non-scaling-stroke; opacity: .95; }
+  #clock .hand { stroke: var(--fb-text); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+  #clock .hub  { fill: var(--fb-text); }
 
   .theme-preview { margin-top: 6px; }
 </style>
@@ -188,7 +212,9 @@
   <div id="banner" class="banner"></div>
 
   <div class="toolbar">
-    <button class="primary" id="play">▶ Play playlist</button>
+    <button class="primary" id="play">▶ Play</button>
+    <label for="startAt" class="playfrom">from</label>
+    <select id="startAt" class="startpicker" title="Choose which track to start playback from"></select>
     <div class="spacer"></div>
     <button class="ghost" id="loadExample">Load example</button>
     <button class="ghost" id="importBtn">Import JSON</button>
@@ -202,6 +228,15 @@
 <div id="stage">
   <div id="player-mount"></div>
   <div id="overlay"><div class="factbox"><div class="txt"></div></div></div>
+  <div id="clock" aria-hidden="true">
+    <svg viewBox="0 0 100 100">
+      <circle class="face" cx="50" cy="50" r="45"></circle>
+      <path class="fill" d=""></path>
+      <g class="marks"></g>
+      <line class="hand" x1="50" y1="50" x2="50" y2="9"></line>
+      <circle class="hub" cx="50" cy="50" r="3.2"></circle>
+    </svg>
+  </div>
   <div id="hud">
     <span class="title" id="hudTitle"></span>
     <span class="count" id="hudCount"></span>
@@ -266,6 +301,7 @@ function normalize(obj) {
   if (Array.isArray(obj.videos)) {
     s.videos = obj.videos.map(v => ({
       url: String(v.url || v.id || ''),
+      title: String(v.title || ''),
       facts: Array.isArray(v.facts) ? v.facts.map(f => String(f)).filter(f => f.trim()) : [],
     }));
   }
@@ -282,7 +318,11 @@ function renderEditor() {
   $('#plDur').value = state.factDuration;
   videosEl.innerHTML = '';
   if (state.videos.length === 0) addVideoRow('', []);
-  else state.videos.forEach(v => addVideoRow(v.url, v.facts));
+  else state.videos.forEach(v => {
+    const id = parseVideoId(v.url);
+    if (id && v.title) titleCache.set(id, v.title);   // seed names supplied by the playlist JSON
+    addVideoRow(v.url, v.facts);
+  });
   renderPreview();
   updateSummary();
 }
@@ -320,8 +360,8 @@ function addVideoRow(url = '', facts = []) {
   urlInput.addEventListener('input', refresh);
   factsInput.addEventListener('input', refresh);
   el.querySelector('.btn-del').addEventListener('click', () => { el.remove(); reindex(); save(); updateSummary(); });
-  el.querySelector('.btn-up').addEventListener('click', () => { const p = el.previousElementSibling; if (p) el.parentNode.insertBefore(el, p); reindex(); save(); });
-  el.querySelector('.btn-down').addEventListener('click', () => { const n = el.nextElementSibling; if (n) el.parentNode.insertBefore(n, el); reindex(); save(); });
+  el.querySelector('.btn-up').addEventListener('click', () => { const p = el.previousElementSibling; if (p) el.parentNode.insertBefore(el, p); reindex(); save(); updateSummary(); });
+  el.querySelector('.btn-down').addEventListener('click', () => { const n = el.nextElementSibling; if (n) el.parentNode.insertBefore(n, el); reindex(); save(); updateSummary(); });
 
   videosEl.appendChild(el);
   updateThumb(el); updateFactCount(el);
@@ -344,6 +384,49 @@ function updateSummary() {
   const valid = s.videos.filter(v => parseVideoId(v.url));
   const facts = s.videos.reduce((a, v) => a + v.facts.length, 0);
   $('#summary').textContent = `${valid.length} video${valid.length===1?'':'s'} · ${facts} fact${facts===1?'':'s'}`;
+  buildStartPicker();
+}
+
+/* ---------- "Play from" track picker ---------- */
+const titleCache = new Map();      // video id -> display name (from JSON or fetched via oEmbed)
+const titleFetching = new Set();
+let startIndex = 0;                 // which track Play starts from
+
+function pickerVideos() {
+  return [...videosEl.children]
+    .map(el => parseVideoId(el.querySelector('.v-url').value))
+    .filter(Boolean);
+}
+function labelFor(id, i) { return `${i + 1}. ${titleCache.get(id) || 'Track ' + (i + 1)}`; }
+
+function buildStartPicker() {
+  const picker = $('#startAt');
+  if (!picker) return;
+  const ids = pickerVideos();
+  const prev = picker.value;
+  picker.innerHTML = '';
+  ids.forEach((id, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = labelFor(id, i);
+    picker.appendChild(o);
+  });
+  picker.value = (prev !== '' && +prev < ids.length) ? prev : '0';   // keep choice, else default to first
+  ids.forEach(id => { if (!titleCache.has(id)) fetchTitle(id); });   // fill in any missing names
+}
+function refreshPickerLabels() {
+  const picker = $('#startAt');
+  if (!picker) return;
+  const ids = pickerVideos();
+  [...picker.options].forEach((o, i) => { if (ids[i] != null) o.textContent = labelFor(ids[i], i); });
+}
+async function fetchTitle(id) {
+  if (!id || titleCache.has(id) || titleFetching.has(id)) return;
+  titleFetching.add(id);
+  try {
+    const r = await fetch('https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' + id + '&format=json');
+    if (r.ok) { const j = await r.json(); if (j && j.title) { titleCache.set(id, j.title); refreshPickerLabels(); } }
+  } catch (_) { /* offline / blocked — keep the "Track N" fallback */ }
+  finally { titleFetching.delete(id); }
 }
 
 /* Read DOM -> state. If peek=true, don't mutate global state. */
@@ -352,10 +435,15 @@ function readEditorIntoState(peek = false) {
     title: $('#plTitle').value,
     theme: $('#plTheme').value,
     factDuration: Math.min(60, Math.max(2, Number($('#plDur').value) || 8)),
-    videos: [...videosEl.children].map(el => ({
-      url: el.querySelector('.v-url').value.trim(),
-      facts: el.querySelector('.v-facts').value.split('\n').map(f => f.trim()).filter(Boolean),
-    })),
+    videos: [...videosEl.children].map(el => {
+      const url = el.querySelector('.v-url').value.trim();
+      const id = parseVideoId(url);
+      return {
+        url,
+        title: (id && titleCache.get(id)) || '',
+        facts: el.querySelector('.v-facts').value.split('\n').map(f => f.trim()).filter(Boolean),
+      };
+    }),
   };
   if (!peek) state = s;
   return s;
@@ -434,6 +522,39 @@ const overlay = $('#overlay');
 const factBox = overlay.querySelector('.factbox');
 const factTxt = factBox.querySelector('.txt');
 
+/* Progress clock (bottom-right) */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const clockEl = $('#clock');
+const clockFill = clockEl.querySelector('.fill');
+const clockHand = clockEl.querySelector('.hand');
+const clockMarks = clockEl.querySelector('.marks');
+let videoDuration = 0;
+
+// point on a circle of radius r at progress p (0..1), clockwise from 12 o'clock
+function clockPt(r, p) { const a = 2 * Math.PI * p; return [(50 + r * Math.sin(a)).toFixed(2), (50 - r * Math.cos(a)).toFixed(2)]; }
+function resetClock() { clockMarks.textContent = ''; clockFill.setAttribute('d', ''); clockHand.setAttribute('transform', 'rotate(0 50 50)'); }
+function drawClockMarks(sched, dur) {
+  clockMarks.textContent = '';
+  if (!dur) return;
+  for (const f of sched) {
+    const p = Math.max(0, Math.min(1, f.start / dur));
+    const [x1, y1] = clockPt(37, p), [x2, y2] = clockPt(47, p);
+    const ln = document.createElementNS(SVGNS, 'line');
+    ln.setAttribute('class', 'mark');
+    ln.setAttribute('x1', x1); ln.setAttribute('y1', y1); ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+    clockMarks.appendChild(ln);
+  }
+}
+function updateClock(t, dur) {
+  const p = dur ? Math.max(0, Math.min(1, t / dur)) : 0;
+  if (p <= 0.0008) clockFill.setAttribute('d', '');
+  else {
+    const [ex, ey] = clockPt(45, p);
+    clockFill.setAttribute('d', `M50 50 L50 5 A45 45 0 ${p > 0.5 ? 1 : 0} 1 ${ex} ${ey} Z`);
+  }
+  clockHand.setAttribute('transform', `rotate(${(p * 360).toFixed(2)} 50 50)`);
+}
+
 /* YouTube API bootstrap */
 function loadYT() {
   if (window.YT && window.YT.Player) { ytReady = true; return; }
@@ -454,7 +575,11 @@ function startPlaylist() {
   playState.videos = playState.videos.filter(v => parseVideoId(v.url));
   if (playState.videos.length === 0) { banner('Add at least one valid YouTube video first.', 'err'); return; }
 
-  overlay.dataset.theme = playState.theme;
+  const sel = parseInt(($('#startAt') || {}).value, 10);
+  startIndex = Math.max(0, Math.min(playState.videos.length - 1, isNaN(sel) ? 0 : sel));
+
+  stage.dataset.theme = playState.theme;   // theme vars live on the stage so the clock inherits them too
+  resetClock();
   stage.classList.add('active');
   requestFS(stage);
   attachHudReveal();
@@ -465,13 +590,15 @@ function startPlaylist() {
 }
 
 function beginPlayback() {
-  current = 0;
+  current = startIndex;
   scheduledFor = -1;
   schedule = [];
   activeFact = -1;
+  videoDuration = 0;
   clearInterval(tickTimer);
   factBox.classList.remove('show');
-  const firstId = parseVideoId(playState.videos[0].url);
+  resetClock();
+  const firstId = parseVideoId(playState.videos[current].url);
   // YT.Player REPLACES its target element with the iframe. Keep #player-mount as a
   // stable container and give the API a fresh child to consume each run, so exiting
   // and replaying can't destroy the mount.
@@ -500,12 +627,15 @@ function onStateChange(e) {
 function onVideoLoaded() {
   const dur = player.getDuration();
   if (!dur || dur < 1) return;               // duration not ready yet
+  videoDuration = dur;
   disableCaptions();                          // force closed captions off (runs every PLAYING)
   if (scheduledFor !== current) {
     schedule = computeSchedule(dur, playState.videos[current].facts, playState.factDuration);
     scheduledFor = current;
     activeFact = -1;
     factBox.classList.remove('show');
+    drawClockMarks(schedule, dur);            // fixed fact markers around the clock
+    updateClock(0, dur);                      // clock starts empty at 12 o'clock
     updateHud();
     // The caption module loads asynchronously after a video starts, so re-assert.
     [200, 800, 1600, 3000].forEach(d => setTimeout(disableCaptions, d));
@@ -532,14 +662,16 @@ function enforceCaptionsOff() {
   if (track && track.languageCode) disableCaptions();
 }
 
+const LAST_FACT_LEAD = 22;   // the final caption appears this many seconds before the video ends
+
 function computeSchedule(duration, facts, factDuration) {
   const n = facts.length;
   if (!n) return [];
-  const first = Math.min(3, duration * 0.03);            // first caption appears early (well within 10s)
-  const last = Math.max(first, duration - factDuration - 0.5);
+  const first = Math.min(3, duration * 0.03);              // first caption appears early (well within 10s)
+  const last = Math.max(first, duration - LAST_FACT_LEAD); // last caption appears 22s from the end...
   return facts.map((text, i) => {
     const start = n === 1 ? first : first + (i / (n - 1)) * (last - first);
-    return { text, start, end: Math.min(duration - 0.3, start + factDuration) };
+    return { text, start, end: Math.min(duration - 0.3, start + factDuration) };  // ...and clears factDuration (10s) later
   });
 }
 
@@ -551,6 +683,7 @@ function tick() {
   if (!player || !player.getCurrentTime) return;
   enforceCaptionsOff();
   const t = player.getCurrentTime();
+  updateClock(t, videoDuration);
   // find the last fact whose window contains t
   let idx = -1;
   for (let i = 0; i < schedule.length; i++) {
@@ -568,6 +701,7 @@ function loadVideoAt(i) {
   if (i < 0 || i >= playState.videos.length) return;
   current = i;
   activeFact = -1; factBox.classList.remove('show');
+  videoDuration = 0; resetClock();
   clearInterval(tickTimer);
   player.loadVideoById(parseVideoId(playState.videos[i].url));
   updateHud();

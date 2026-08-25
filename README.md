@@ -71,6 +71,14 @@ block of variable overrides, so adding a new one is a copy-paste.
 - **Closed captions are always forced off.** YouTube's caption track is cleared on every
   video and re-checked continuously during playback, so CC can't reappear (even if a video
   defaults it on or the viewer's account has "always show captions" enabled).
+- **Start anywhere.** The bottom toolbar has a **Play ▸ from** picker listing every track by
+  name (names are read from the playlist JSON, or fetched from YouTube if omitted). It
+  defaults to the first track; pick another to start playback from there.
+- **Caption timing.** The first caption appears within a few seconds; the last appears
+  22 seconds before the end and clears 10 seconds later. The rest are spread evenly between.
+- **Progress clock.** A single-hand clock in the bottom-right sweeps clockwise once over the
+  whole song (12 o'clock empty → 12 o'clock full), with always-visible tick markers at each
+  caption's position. It matches the active theme's colours and a single-line banner's height.
 
 ## Notes
 
