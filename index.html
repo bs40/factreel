@@ -163,6 +163,18 @@
   #clock .hub  { fill: var(--fb-text); }
 
   .theme-preview { margin-top: 6px; }
+
+  /* Utility classes. These exist so the markup carries no inline style="" attributes,
+     which lets the Content-Security-Policy drop 'unsafe-inline' from style-src. */
+  .field-grow { flex: 1; min-width: 220px; }
+  .dur-input { width: 110px; }
+  .row-between { justify-content: space-between; }
+  .tp-stage { position: relative; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line); background: #0a0a0f;
+    min-height: 150px; display: flex; align-items: flex-end; justify-content: center;
+    padding: 0 20px 20px; }
+  .tp-box { position: relative; }
+  .tp-note { margin-top: 6px; color: var(--muted); font-size: 11px; }
 </style>
 
 <!-- =================== SETUP / EDITOR =================== -->
@@ -176,7 +188,7 @@
 
   <div class="card">
     <div class="row">
-      <div class="field" style="flex:1; min-width:220px;">
+      <div class="field field-grow">
         <label for="plTitle">Playlist title</label>
         <input type="text" id="plTitle" placeholder="My playlist" />
       </div>
@@ -192,14 +204,14 @@
       </div>
       <div class="field">
         <label for="plDur">Fact display (sec)</label>
-        <input type="number" id="plDur" min="2" max="60" step="1" value="8" style="width:110px" />
+        <input type="number" id="plDur" min="2" max="60" step="1" value="8" class="dur-input" />
       </div>
     </div>
     <div class="theme-preview" id="themePreview"></div>
   </div>
 
   <div class="card">
-    <div class="row" style="justify-content: space-between;">
+    <div class="row row-between">
       <strong>Videos</strong>
       <span class="factcount" id="summary"></span>
     </div>
@@ -216,6 +228,8 @@
     <label for="startAt" class="playfrom">from</label>
     <select id="startAt" class="startpicker" title="Choose which track to start playback from"></select>
     <div class="spacer"></div>
+    <label for="curated" class="playfrom">load</label>
+    <select id="curated" class="startpicker" title="Load one of the built-in playlists"></select>
     <button class="ghost" id="loadExample">Load example</button>
     <button class="ghost" id="importBtn">Import JSON</button>
     <button class="ghost" id="exportBtn">Export JSON</button>
@@ -454,15 +468,50 @@ function renderPreview() {
   const theme = $('#plTheme').value;
   const host = $('#themePreview');
   host.innerHTML = `
-    <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
-                background:#0a0a0f url('https://i.ytimg.com/vi/_/mqdefault.jpg') center/cover;
-                min-height:150px; display:flex; align-items:flex-end; justify-content:center; padding:0 20px 20px;"
-         data-theme="${theme}">
-      <div class="factbox show" style="position:relative;">
+    <div class="tp-stage" data-theme="${theme}">
+      <div class="factbox show tp-box">
         <div class="txt">The song was a late addition to the album, added because it needed a catchier single.</div>
       </div>
     </div>
-    <div class="hint" style="margin-top:6px; color:var(--muted); font-size:11px;">Live preview of the “${theme}” theme.</div>`;
+    <div class="hint tp-note">Live preview of the “${theme}” theme.</div>`;
+}
+
+/* ---------- Built-in playlists ----------
+   A fixed, same-origin allowlist. There is deliberately no way to aim the app at an
+   arbitrary URL: nothing a visitor puts in the address bar ever reaches fetch(). */
+const CURATED = [
+  { file: 'playlist.music-5min.json',    name: 'Music by Bill — 5 minute cuts' },
+  { file: 'playlist.music-by-bill.json', name: 'Music by Bill' },
+  { file: 'playlist.pop-hits.json',      name: 'Pop hits — stories behind the videos' },
+  { file: 'playlist.example.json',       name: 'Example (format demo)' },
+];
+
+function buildCuratedPicker() {
+  const sel = $('#curated');
+  sel.replaceChildren();
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = 'Built-in playlist…';
+  sel.appendChild(ph);
+  for (const c of CURATED) {
+    const o = document.createElement('option');
+    o.value = c.file; o.textContent = c.name;
+    sel.appendChild(o);
+  }
+}
+
+async function loadCurated(file) {
+  if (!CURATED.some(c => c.file === file)) { banner('Unknown playlist.', 'err'); return; }
+  const url = new URL(file, location.href);                 // resolve against our own origin
+  if (url.origin !== location.origin) { banner('Refused: off-origin playlist.', 'err'); return; }
+  try {
+    const r = await fetch(url.href, { credentials: 'omit' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    state = normalize(await r.json());
+    renderEditor(); save();
+    banner('Loaded “' + (state.title || file) + '”.', 'ok');
+  } catch (err) {
+    banner('Could not load that playlist: ' + err.message, 'err');
+  }
 }
 
 /* ---------- Import / Export ---------- */
@@ -512,6 +561,7 @@ let ytReady = false;
 let queuedStart = false;
 let current = -1;             // index into playState.videos
 let scheduledFor = -1;        // which video index `schedule` was built for
+let scheduledDur = 0;         // the duration `schedule` was built from (see onVideoLoaded)
 let schedule = [];            // [{ text, start, end }]
 let activeFact = -1;
 let tickTimer = null;
@@ -592,6 +642,7 @@ function startPlaylist() {
 function beginPlayback() {
   current = startIndex;
   scheduledFor = -1;
+  scheduledDur = 0;
   schedule = [];
   activeFact = -1;
   videoDuration = 0;
@@ -621,17 +672,43 @@ function onStateChange(e) {
   else if (e.data === YT.PlayerState.PLAYING) onVideoLoaded();
 }
 
+/* True when the player is showing something other than the video we asked for — in
+   practice, an advert. Best effort: it relies on the player reporting the ad's own id.
+   The duration check below is the guaranteed backstop, and does not depend on this. */
+function adShowing() {
+  if (!playState || !playState.videos[current]) return false;
+  try {
+    const want = parseVideoId(playState.videos[current].url);
+    const got = player.getVideoData();
+    return !!(want && got && got.video_id && got.video_id !== want);
+  } catch (_) { return false; }
+}
+
+function hideFact() {
+  factBox.classList.remove('show');
+  if (activeFact !== -1) { activeFact = -1; updateHud(); }
+}
+
 /* Called when a video is ready/playing. Builds the fact schedule from its duration
    ONCE per video — later PLAYING events (e.g. after a seek or pause) must not reset
    the active fact, or a visible fact could get stranded on screen. */
 function onVideoLoaded() {
+  // While an advert is on screen the player reports the AD's duration and position.
+  // Scheduling against those would cram every fact into the first few seconds, so sit
+  // it out — and keep the fact box off the advert while we wait.
+  if (adShowing()) { hideFact(); startTick(); return; }
+
   const dur = player.getDuration();
   if (!dur || dur < 1) return;               // duration not ready yet
   videoDuration = dur;
   disableCaptions();                          // force closed captions off (runs every PLAYING)
-  if (scheduledFor !== current) {
+  // Rebuild for a new video, and also whenever the duration we scheduled against turns
+  // out to be wrong. That second case is how the schedule recovers when a pre-roll ad
+  // supplied the first duration we saw.
+  if (scheduledFor !== current || Math.abs(dur - scheduledDur) > 1) {
     schedule = computeSchedule(dur, playState.videos[current].facts, playState.factDuration);
     scheduledFor = current;
+    scheduledDur = dur;
     activeFact = -1;
     factBox.classList.remove('show');
     drawClockMarks(schedule, dur);            // fixed fact markers around the clock
@@ -682,6 +759,15 @@ function startTick() {
 function tick() {
   if (!player || !player.getCurrentTime) return;
   enforceCaptionsOff();
+
+  // An advert is playing: keep the overlay off it and hold the clock where it is.
+  if (adShowing()) { hideFact(); return; }
+
+  // If the player's duration no longer matches what we scheduled against, re-derive.
+  // This is what rescues the run after a pre-roll ad reported its own short duration.
+  const liveDur = player.getDuration();
+  if (liveDur && liveDur >= 1 && Math.abs(liveDur - scheduledDur) > 1) { onVideoLoaded(); return; }
+
   const t = player.getCurrentTime();
   updateClock(t, videoDuration);
   // find the last fact whose window contains t
@@ -701,7 +787,7 @@ function loadVideoAt(i) {
   if (i < 0 || i >= playState.videos.length) return;
   current = i;
   activeFact = -1; factBox.classList.remove('show');
-  videoDuration = 0; resetClock();
+  videoDuration = 0; scheduledDur = 0; resetClock();
   clearInterval(tickTimer);
   player.loadVideoById(parseVideoId(playState.videos[i].url));
   updateHud();
@@ -768,21 +854,20 @@ $('#play').addEventListener('click', startPlaylist);
 $('#exportBtn').addEventListener('click', exportJSON);
 $('#importBtn').addEventListener('click', () => $('#importFile').click());
 $('#importFile').addEventListener('change', (e) => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+$('#curated').addEventListener('change', (e) => {
+  const f = e.target.value; e.target.value = '';        // reset so the same item can be re-picked
+  if (f) loadCurated(f);
+});
 $('#loadExample').addEventListener('click', () => { state = normalize(EXAMPLE); renderEditor(); save(); banner('Example loaded.', 'ok'); });
 $('#clearBtn').addEventListener('click', () => { if (confirm('Clear the whole playlist?')) { state = normalize({}); renderEditor(); save(); } });
 $('#prevBtn').addEventListener('click', prevVideo);
 $('#nextBtn').addEventListener('click', nextVideo);
 $('#exitBtn').addEventListener('click', exitPlayer);
 
-/* Boot. A ?playlist=<path-or-url> query param loads that JSON directly; otherwise
-   the last-used playlist is restored from localStorage. */
+/* Boot. The last-used playlist is restored from localStorage. Playlists otherwise
+   arrive by paste, file import, or the built-in picker — never from a URL supplied
+   by whoever opened the page. */
 load();
 renderEditor();
-const plParam = new URLSearchParams(location.search).get('playlist');
-if (plParam) {
-  fetch(plParam)
-    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(data => { state = normalize(data); renderEditor(); save(); banner('Loaded playlist from URL.', 'ok'); })
-    .catch(err => banner('Could not load playlist "' + plParam + '": ' + err.message, 'err'));
-}
+buildCuratedPicker();
 </script>

@@ -3,8 +3,8 @@
 Play a playlist of YouTube videos fullscreen, with **fact overlays** that appear on top of
 the video, spread evenly across each video's duration.
 
-Everything lives in one file: **`index.html`**. No build step, no server. Double-click it,
-or host the folder anywhere static.
+Everything lives in one file: **`index.html`**. No build step, no server for local use —
+double-click it. To publish it, see [Hosting](#hosting).
 
 ## Use it
 
@@ -18,17 +18,21 @@ or host the folder anywhere static.
 Your playlist is saved automatically in the browser (localStorage). Use **Export JSON** to
 save a copy, **Import JSON** to load one, and **Load example** to see the format.
 
-### Load a playlist by URL
+### Built-in playlists
 
-Add `?playlist=<path-or-url>` to load a JSON playlist directly:
+The **load** dropdown in the bottom toolbar lists the playlists shipped alongside
+`index.html`. Picking one fetches it from the same origin and replaces the editor
+contents.
 
-```
-http://localhost:5199/?playlist=playlist.pop-hits.json
-http://localhost:5199/?playlist=https://example.com/mylist.json
-```
+That list is a hardcoded allowlist in `index.html` (`const CURATED`). To publish a new
+playlist, drop the JSON next to `index.html`, add an entry to `CURATED`, and add the
+filename to `ASSETS` in `deploy/build.js`.
 
-The value can be a file served alongside `index.html` or any full URL. This overrides the
-saved localStorage playlist, so it's the reliable way to share a specific playlist link.
+There is deliberately **no way to point the app at an arbitrary URL**. Nothing a visitor
+types in the address bar reaches `fetch()`, so the page cannot be used to pull JSON from
+a host someone else controls. Playlists you have not published arrive by **Import JSON**
+(read in the browser via `FileReader`) or by pasting into the editor — neither ever
+touches the server.
 
 ## How the timing works
 
@@ -68,6 +72,11 @@ block of variable overrides, so adding a new one is a copy-paste.
 
 ## Playback behaviour
 
+- **Adverts are handled.** While an advert is on screen the player reports the *ad’s*
+  duration and position, not the video’s. Facts are hidden for the duration of an ad, and
+  the schedule is rebuilt as soon as the real duration appears — so a pre-roll cannot
+  collapse every fact into the first few seconds. See `adShowing()` and the duration check
+  in `tick()`.
 - **Closed captions are always forced off.** YouTube's caption track is cleared on every
   video and re-checked continuously during playback, so CC can't reappear (even if a video
   defaults it on or the viewer's account has "always show captions" enabled).
@@ -79,6 +88,26 @@ block of variable overrides, so adding a new one is a copy-paste.
 - **Progress clock.** A single-hand clock in the bottom-right sweeps clockwise once over the
   whole song (12 o'clock empty → 12 o'clock full), with always-visible tick markers at each
   caption's position. It matches the active theme's colours and a single-line banner's height.
+
+## Hosting
+
+The site is static: HTML, CSS, JS and JSON, with no server-side code and no upload path.
+All video bandwidth is YouTube’s, not the host’s.
+
+```bash
+node deploy/build.js
+```
+
+That writes `dist/` — `index.html` plus the published playlists, and nothing else
+(`server.js` and `research/` stay local). It also computes SHA-256 hashes for the inline
+`<style>` and `<script>` and injects a matching Content-Security-Policy meta tag, so the
+page needs neither `unsafe-inline` nor an external script file. The full header value,
+including the directives a meta tag cannot carry, is written to `deploy/csp-header.txt`.
+
+Rerun the build after **any** edit to `index.html` — the hashes change with the content,
+and a stale hash blocks the script.
+
+To publish to Bunny.net, see [deploy/README.md](deploy/README.md).
 
 ## Notes
 
