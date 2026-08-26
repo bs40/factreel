@@ -6,6 +6,22 @@ YouTube's, not yours.
 
 Total deployable: **~140 KB** across five files.
 
+## Live
+
+**https://factreel.b-cdn.net/**
+
+| Resource | |
+| --- | --- |
+| Storage zone | `factreel` — id `1786710`, region DE, host `storage.bunnycdn.com` |
+| Pull zone | `factreel` — id `6417230` |
+| Force SSL | on (`http://` → 301 → `https://`) |
+| Edge rules | 5 security headers, all live and verified |
+
+Still optional: **Bunny Shield** (free tier, $0/pull zone) is *not* enabled. Turn it on from
+Pull Zone → Shield if you want the preconfigured WAF rules and two rate limits. It is left
+off deliberately — a WAF can block legitimate traffic, so it is worth enabling with your eyes
+on it rather than silently.
+
 ---
 
 ## 1. Build
@@ -72,22 +88,21 @@ Condition **Request URL → Match Any → `*`**.
 
 Also enable **Force SSL** on the pull zone.
 
-### Roll the CSP out in report-only mode first
+### About the CSP
 
-The CSP is tight: `default-src 'none'`, hashed inline script and style, and only three
+The policy is tight: `default-src 'none'`, hashed inline script and style, and only three
 allowed origins (`self`, `www.youtube.com`, `i.ytimg.com`) — the three the page is actually
 observed to contact.
 
-The page has been confirmed to boot, apply its styles and build its playlist picker under
-this exact policy. A **full playback run** under the policy has not been confirmed, and the
-residual risk is that YouTube's widget API injects a `<style>` element into the parent
-document, which `style-src` would block.
+It is deployed **enforcing**, not report-only. The one risk worth checking before doing that
+was whether YouTube's widget API injects a `<style>` element into the parent document, which
+`style-src` would block. It does not: `www-widgetapi.js` (the script that runs in the parent
+page, ~27 KB) contains no `createElement("style")`, no `<style>` literal, no `insertRule`,
+no `styleSheets` access, no `setAttribute("style")` and no `cssText`. It sizes the iframe by
+assigning to `.style.*`, which is CSSOM and not governed by CSP.
 
-So for the first deploy, name the header `Content-Security-Policy-Report-Only` instead.
-Play a couple of tracks, open DevTools → Console, and look for violation reports. If it is
-clean, rename the rule to `Content-Security-Policy`. If `style-src` is reported, append
-`'unsafe-inline'` to the `style-src` directive in `deploy/build.js` and rebuild — everything
-else in the policy still holds.
+If you ever do see a `style-src` violation reported, append `'unsafe-inline'` to the
+`style-src` directive in `deploy/build.js` and rebuild — the rest of the policy still holds.
 
 ## 5. Bunny Shield
 
