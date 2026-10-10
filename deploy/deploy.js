@@ -74,8 +74,72 @@ async function purge() {
   console.log('\ncache purged for pull zone ' + PULLZONE);
 }
 
+/* The Content-Security-Policy edge rule carries SHA-256 hashes of the inline script and
+ * style, so ANY edit to index.html changes it. The page is served with both a meta CSP
+ * and this header, and both are enforced — a header left on the previous build's hashes
+ * blocks the script outright and the page renders dead. So the rule is synced here,
+ * every deploy, rather than being left to memory.
+ *
+ * The rule is updated BEFORE upload and the cache is purged after, so the new header and
+ * the new HTML become visible together on the purge. */
+async function syncCsp() {
+  const cspFile = path.join(__dirname, 'csp-header.txt');
+  if (!fs.existsSync(cspFile)) die('deploy/csp-header.txt not found — run `node deploy/build.js` first.');
+  const csp = fs.readFileSync(cspFile, 'utf8').trim();
+
+  if (!PULLZONE || !API_KEY) {
+    if (process.argv.includes('--no-csp-sync')) {
+      console.log('CSP sync skipped (--no-csp-sync). Update the edge rule by hand or the page will break.\n');
+      return;
+    }
+    die(
+      'cannot sync the Content-Security-Policy edge rule: BUNNY_PULLZONE_ID and ' +
+      'BUNNY_API_KEY must both be set.\n' +
+      '       The header carries hashes of the inline script and style, so deploying ' +
+      'without updating it\n       would block the script and leave a dead page. Set both, ' +
+      'or pass --no-csp-sync if you\n       have already updated the rule yourself.'
+    );
+  }
+
+  const headers = { AccessKey: API_KEY, Accept: 'application/json' };
+  const res = await fetch('https://api.bunny.net/pullzone/' + PULLZONE, { headers });
+  if (!res.ok) throw new Error('could not read pull zone: HTTP ' + res.status);
+  const pz = await res.json();
+  const rule = (pz.EdgeRules || []).find(
+    (e) => e.ActionType === 5 && (e.ActionParameter1 || '').toLowerCase() === 'content-security-policy'
+  );
+  if (!rule) die('no Content-Security-Policy edge rule found on pull zone ' + PULLZONE + '.');
+
+  if (rule.ActionParameter2.trim() === csp) {
+    console.log('CSP edge rule already matches this build.\n');
+    return;
+  }
+  if (DRY) {
+    console.log('  would update the CSP edge rule to the hashes in deploy/csp-header.txt\n');
+    return;
+  }
+  // Reuse the Guid so this updates the rule in place rather than adding a second one.
+  const put = await fetch('https://api.bunny.net/pullzone/' + PULLZONE + '/edgerules/addOrUpdate', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      Guid: rule.Guid,
+      ActionType: 5,
+      ActionParameter1: 'Content-Security-Policy',
+      ActionParameter2: csp,
+      Triggers: [{ Type: 0, PatternMatches: ['*'], PatternMatchingType: 0 }],
+      TriggerMatchingType: 0,
+      Description: 'Security header: Content-Security-Policy (hashes — synced by deploy/deploy.js)',
+      Enabled: true,
+    }),
+  });
+  if (!put.ok) throw new Error('CSP edge rule update failed: HTTP ' + put.status + ' ' + (await put.text()));
+  console.log('CSP edge rule updated to this build\'s hashes.\n');
+}
+
 (async () => {
   console.log((DRY ? 'DRY RUN — ' : '') + 'deploying ' + files.length + ' file(s) to ' + HOST + '/' + ZONE + '\n');
+  await syncCsp();
   for (const f of files) await upload(f);
   await purge();
   console.log('\ndone.');

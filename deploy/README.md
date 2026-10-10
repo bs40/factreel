@@ -135,9 +135,13 @@ to `index.html` changes it. The page is served with both a meta CSP and this hea
 both are enforced, so a header left on the previous build's hashes blocks the script
 outright — the page renders unstyled and does nothing.
 
-After `node deploy/build.js`, copy the new `deploy/csp-header.txt` into the
-`Content-Security-Policy` edge rule before or alongside uploading. Updating the rule in
-place (reusing its existing Guid) avoids ending up with two competing rules.
+`deploy/deploy.js` handles this: it reads `deploy/csp-header.txt` and updates the edge
+rule in place (reusing its Guid, so you never end up with two competing rules) before it
+uploads, then purges, so the new header and the new HTML become visible together.
+
+It needs `BUNNY_PULLZONE_ID` and `BUNNY_API_KEY` to do that, and **refuses to deploy**
+without them rather than silently shipping a mismatch. If you have already updated the
+rule yourself, pass `--no-csp-sync`.
 
 ## 5. Bunny Shield
 
