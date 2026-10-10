@@ -197,6 +197,91 @@
 
   .theme-preview { margin-top: 6px; }
 
+  /* =================== HOME =================== */
+  [hidden] { display: none !important; }
+
+  /* The hero wash is decorative and absolutely positioned; clip it horizontally so it
+     can never add a horizontal page scrollbar. */
+  #home { overflow-x: clip; }
+  .home-wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px 96px; }
+
+  .hero { position: relative; padding: 92px 0 52px; text-align: center; }
+  /* Cinematic wash behind the title. Decorative only. */
+  .hero::before {
+    content: ''; position: absolute; left: 50%; top: -240px; transform: translateX(-50%);
+    width: min(1100px, 100%); height: 620px; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(48% 50% at 50% 50%, rgba(88, 201, 255, .20), transparent 70%),
+      radial-gradient(38% 42% at 20% 44%, rgba(167, 109, 255, .18), transparent 72%),
+      radial-gradient(34% 40% at 80% 38%, rgba(255, 96, 162, .13), transparent 72%);
+    filter: blur(12px);
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero-mark { font-size: 12px; letter-spacing: .24em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 22px; }
+  .hero h1 { margin: 0; font-size: clamp(30px, 5.4vw, 54px); line-height: 1.06;
+    letter-spacing: -.025em; font-weight: 700;
+    background: linear-gradient(180deg, #ffffff 28%, #9fb2c9);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero-sub { margin: 18px auto 0; max-width: 48ch; color: var(--muted);
+    font-size: 15px; line-height: 1.62; }
+
+  .cards { display: grid; gap: 22px;
+    grid-template-columns: repeat(auto-fit, minmax(288px, 1fr)); }
+
+  .pcard { display: flex; flex-direction: column; text-decoration: none; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; transition: transform .22s ease, border-color .22s, box-shadow .22s; }
+  .pcard:hover, .pcard:focus-visible {
+    transform: translateY(-4px); border-color: rgba(88, 201, 255, .55); outline: none;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .5), 0 0 0 1px rgba(88, 201, 255, .14); }
+
+  .pcard .art { position: relative; overflow: hidden; aspect-ratio: 16 / 9;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    background: #06070b; }
+  .pcard .art img { width: 100%; height: 100%; object-fit: cover; display: block;
+    opacity: .82; transition: opacity .22s, transform .5s ease; }
+  .pcard:hover .art img { opacity: 1; transform: scale(1.04); }
+  .pcard .art[data-n="1"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .pcard .art[data-n="2"] { grid-template-rows: 1fr; }
+  .pcard .art[data-n="3"] img:first-child { grid-row: span 2; }
+  .pcard .art::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 11, 15, .08) 34%, rgba(10, 11, 15, .88)); }
+
+  .pcard .play { position: absolute; z-index: 2; right: 14px; bottom: 14px;
+    width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 14px; padding-left: 3px; background: rgba(255, 255, 255, .94); color: #04202c;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+    transition: transform .22s ease, background .22s; }
+  .pcard:hover .play { transform: scale(1.09); background: var(--accent); }
+
+  .pcard .body { padding: 16px 18px 18px; display: flex; flex-direction: column;
+    gap: 8px; flex: 1; }
+  .pcard h2 { margin: 0; font-size: 17px; line-height: 1.3; letter-spacing: -.01em; }
+  .pcard .blurb { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; flex: 1; }
+  .pcard .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .pcard .meta span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; }
+
+  /* "Build your own" uses the same frame with no artwork. */
+  .pcard.make .art { grid-template-columns: 1fr; grid-template-rows: 1fr; place-items: center;
+    background: repeating-linear-gradient(135deg, #0f1118 0 12px, #12141d 12px 24px); }
+  .pcard.make .art::after { background: linear-gradient(180deg, transparent 52%, rgba(10, 11, 15, .72)); }
+  .pcard.make .glyph { position: relative; z-index: 2; font-size: 30px; color: var(--muted); font-weight: 300; }
+
+  .home-foot { margin-top: 48px; text-align: center; color: var(--muted);
+    font-size: 12.5px; line-height: 1.7; }
+
+  .backlink { display: inline-flex; align-items: center; gap: 6px; color: var(--muted);
+    text-decoration: none; font-size: 13px; }
+  .backlink:hover { color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .hero { padding: 60px 0 38px; }
+    .cards { gap: 16px; }
+    .home-wrap { padding-bottom: 64px; }
+  }
+
   /* Utility classes. These exist so the markup carries no inline style="" attributes,
      which lets the Content-Security-Policy drop 'unsafe-inline' from style-src. */
   .field-grow { flex: 1; min-width: 220px; }
@@ -211,7 +296,24 @@
 </style>
 
 <!-- =================== SETUP / EDITOR =================== -->
-<div class="wrap" id="editor">
+<!-- =================== HOME =================== -->
+<div id="home">
+  <div class="home-wrap">
+    <header class="hero">
+      <div class="hero-mark">FactReel</div>
+      <h1>The stories behind<br />the music videos.</h1>
+      <p class="hero-sub">Pick a playlist. It plays full screen, with researched facts timed
+        evenly across every track.</p>
+    </header>
+    <div class="cards" id="cards"></div>
+    <footer class="home-foot">
+      Videos stream from YouTube. Playlists you build yourself stay in your browser.
+    </footer>
+  </div>
+</div>
+
+<div class="wrap" id="editor" hidden>
+  <a class="backlink" href="./">← All playlists</a>
   <header class="top">
     <div>
       <h1>🎞️ FactReel</h1>
@@ -515,11 +617,104 @@ function renderPreview() {
    A fixed, same-origin allowlist. There is deliberately no way to aim the app at an
    arbitrary URL: nothing a visitor puts in the address bar ever reaches fetch(). */
 const CURATED = [
-  { file: 'playlist.music-5min.json',    name: 'Music by Bill — 5 minute cuts' },
-  { file: 'playlist.music-by-bill.json', name: 'Music by Bill' },
-  { file: 'playlist.pop-hits.json',      name: 'Pop hits — stories behind the videos' },
-  { file: 'playlist.example.json',       name: 'Example (format demo)' },
+  {
+    slug: 'music-5min',
+    file: 'playlist.music-5min.json',
+    name: 'Music (5 min max)',
+    blurb: 'Fifty-five tracks, none of them outstaying five minutes, and the story behind every one.',
+    tracks: 55, facts: 271,
+    art: ['PUdyuKaGQd4', 'mraLsg-G4wA', 'oT0fNP0r1lI', 'kFeZdHBKFhI'],
+  },
+  {
+    slug: 'music-by-bill',
+    file: 'playlist.music-by-bill.json',
+    name: 'Music by Bill',
+    blurb: 'Bill’s forty-five: where the songs came from, who nearly walked away, and what went wrong on set.',
+    tracks: 45, facts: 221,
+    art: ['PUdyuKaGQd4', 'yupEwQ6qCd0', '5qFhSWA9Cz4', 'LomY6nWI0ek'],
+  },
+  {
+    slug: 'pop-hits',
+    file: 'playlist.pop-hits.json',
+    name: 'Pop hits',
+    blurb: 'Three videos that defined their decade, and the chaos behind each shoot.',
+    tracks: 3, facts: 18,
+    art: ['nTizYn3-QN0', 'BnO3nijfYmU', 'CduA0TULnow'],
+  },
 ];
+
+function buildCards() {
+  const host = $('#cards');
+  host.replaceChildren();
+
+  for (const c of CURATED) {
+    const a = document.createElement('a');
+    a.className = 'pcard';
+    a.href = '?p=' + encodeURIComponent(c.slug);
+
+    const art = document.createElement('div');
+    art.className = 'art';
+    art.dataset.n = c.art.length;          // drives the mosaic layout, see CSS
+    for (const id of c.art) {
+      const img = document.createElement('img');
+      img.src = thumbUrl(id);
+      img.alt = '';                      // decorative; the title carries the meaning
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      art.appendChild(img);
+    }
+    const play = document.createElement('div');
+    play.className = 'play';
+    play.textContent = '▶';
+    art.appendChild(play);
+
+    const body = document.createElement('div');
+    body.className = 'body';
+    const h = document.createElement('h2');
+    h.textContent = c.name;
+    const b = document.createElement('p');
+    b.className = 'blurb';
+    b.textContent = c.blurb;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    for (const t of [c.tracks + ' tracks', c.facts + ' facts']) {
+      const s = document.createElement('span');
+      s.textContent = t;
+      meta.appendChild(s);
+    }
+    body.append(h, b, meta);
+    a.append(art, body);
+    host.appendChild(a);
+  }
+
+  const mk = document.createElement('a');
+  mk.className = 'pcard make';
+  mk.href = '?new=1';
+  const mart = document.createElement('div');
+  mart.className = 'art';
+  const glyph = document.createElement('div');
+  glyph.className = 'glyph';
+  glyph.textContent = '+';
+  mart.appendChild(glyph);
+  const mbody = document.createElement('div');
+  mbody.className = 'body';
+  const mh = document.createElement('h2');
+  mh.textContent = 'Build your own';
+  const mb = document.createElement('p');
+  mb.className = 'blurb';
+  mb.textContent = 'Paste YouTube links, write one fact per line, play it full screen. Nothing leaves your browser.';
+  mbody.append(mh, mb);
+  mk.append(mart, mbody);
+  host.appendChild(mk);
+}
+
+/* The action bar lives inside #editor and measures zero while the home page is up, so
+   re-measure on every view change. */
+function showView(which) {
+  $('#home').hidden = which !== 'home';
+  $('#editor').hidden = which !== 'editor';
+  syncActionBarHeight();
+}
 
 function buildCuratedPicker() {
   const sel = $('#curated');
@@ -905,13 +1100,31 @@ $('#exitBtn').addEventListener('click', exitPlayer);
 load();
 renderEditor();
 buildCuratedPicker();
+buildCards();
 
 /* The action bar is fixed to the bottom of the viewport, so the editor has to reserve
-   exactly its height — which changes as the bar wraps to one, two or three rows. */
+   exactly its height — which changes as the bar wraps to one, two or three rows.
+   Declared before the router, which calls showView() and therefore this. */
 const actionBar = $('.actionbar');
 const syncActionBarHeight = () =>
   document.documentElement.style.setProperty('--actionbar-h', actionBar.offsetHeight + 'px');
 if (window.ResizeObserver) new ResizeObserver(syncActionBarHeight).observe(actionBar);
 else addEventListener('resize', syncActionBarHeight);
-syncActionBarHeight();
+
+/* Router. ?p=<slug> is a permalink to a built-in playlist. The slug is looked up in
+   CURATED, so only the fixed relative filenames listed there can ever reach fetch() —
+   nothing from the address bar is ever treated as a path or a URL. An unknown slug
+   simply lands on the home page. */
+const params = new URLSearchParams(location.search);
+const wanted = params.get('p');
+const entry = wanted ? CURATED.find(c => c.slug === wanted) : null;
+
+if (entry) {
+  showView('editor');
+  loadCurated(entry.file);
+} else if (params.has('new')) {
+  showView('editor');
+} else {
+  showView('home');
+}
 </script>

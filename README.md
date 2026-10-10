@@ -18,19 +18,34 @@ double-click it. To publish it, see [Hosting](#hosting).
 Your playlist is saved automatically in the browser (localStorage). Use **Export JSON** to
 save a copy, **Import JSON** to load one, and **Load example** to see the format.
 
-### Built-in playlists
+### Home page and permalinks
 
-The **load** dropdown in the bottom toolbar lists the playlists shipped alongside
-`index.html`. Picking one fetches it from the same origin and replaces the editor
-contents.
+Opening the site with no query string shows the home page: a card per built-in playlist,
+plus a "Build your own" card. Each card is a permalink.
 
-That list is a hardcoded allowlist in `index.html` (`const CURATED`). To publish a new
-playlist, drop the JSON next to `index.html`, add an entry to `CURATED`, and add the
-filename to `ASSETS` in `deploy/build.js`.
+| URL | Shows |
+| --- | --- |
+| `/` | the home page |
+| `/?p=<slug>` | the editor with that playlist loaded, ready to play |
+| `/?new=1` | the editor, with whatever you last had in it |
 
-There is deliberately **no way to point the app at an arbitrary URL**. Nothing a visitor
-types in the address bar reaches `fetch()`, so the page cannot be used to pull JSON from
-a host someone else controls. Playlists you have not published arrive by **Import JSON**
+Slugs are `music-5min`, `music-by-bill` and `pop-hits`.
+
+The cards carry hardcoded track and fact counts so that opening the home page costs **no
+playlist fetches at all** — only the page itself. `deploy/build.js` re-reads those counts
+from the playlist JSON on every build and fails if they have drifted, so the cards cannot
+quietly start lying. Card artwork is YouTube thumbnails, served by `i.ytimg.com`, so it
+costs you no bandwidth either.
+
+To publish a new playlist: drop the JSON next to `index.html` and add an entry to
+`CURATED` with its `slug`, `file`, `name`, `blurb`, `tracks`, `facts` and up to four
+video ids for `art`. The build derives the published file list from `CURATED`, so there
+is nothing else to keep in step.
+
+There is deliberately **no way to point the app at an arbitrary URL**. `?p=` takes a
+*slug*, not a path or a URL: the slug is looked up in `CURATED` and only the fixed
+relative filename found there is ever fetched. `?p=https://evil.example/x.json` is simply
+an unknown slug, and lands on the home page without issuing a single request. Playlists you have not published arrive by **Import JSON**
 (read in the browser via `FileReader`) or by pasting into the editor — neither ever
 touches the server.
 

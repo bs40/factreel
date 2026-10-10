@@ -128,6 +128,17 @@ assigning to `.style.*`, which is CSSOM and not governed by CSP.
 If you ever do see a `style-src` violation reported, append `'unsafe-inline'` to the
 `style-src` directive in `deploy/build.js` and rebuild — the rest of the policy still holds.
 
+### The CSP edge rule must be resynced on every deploy
+
+The policy carries SHA-256 hashes of the inline `<script>` and `<style>`, so **any** edit
+to `index.html` changes it. The page is served with both a meta CSP and this header, and
+both are enforced, so a header left on the previous build's hashes blocks the script
+outright — the page renders unstyled and does nothing.
+
+After `node deploy/build.js`, copy the new `deploy/csp-header.txt` into the
+`Content-Security-Policy` edge rule before or alongside uploading. Updating the rule in
+place (reusing its existing Guid) avoids ending up with two competing rules.
+
 ## 5. Bunny Shield
 
 Pull Zone → **Shield**. The **free** tier is $0/month per pull zone and gives you

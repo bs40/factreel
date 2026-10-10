@@ -17,13 +17,9 @@ const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 
-// Everything that gets published. Anything not listed here never reaches the CDN.
-const ASSETS = [
-  'playlist.music-5min.json',
-  'playlist.music-by-bill.json',
-  'playlist.pop-hits.json',
-  'playlist.example.json',
-];
+// Shipped alongside the playlists in CURATED. The example is documentation only — the
+// "Load example" button uses an in-script constant, not this file.
+const EXTRA_ASSETS = ['playlist.example.json'];
 
 const sha256 = (s) =>
   "'sha256-" + crypto.createHash('sha256').update(s, 'utf8').digest('base64') + "'";
@@ -36,6 +32,31 @@ function inlineContent(html, tag) {
 }
 
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+
+/* The home page cards carry hardcoded track and fact counts so that opening the site
+   costs no playlist fetches at all. That only holds if the numbers stay true, so read
+   CURATED straight out of the page and check them against the playlists. */
+const curatedSrc = html.match(/const CURATED = (\[[^]*?\n\]);/);
+if (!curatedSrc) throw new Error('could not find the CURATED array in index.html');
+const CURATED = new Function('return ' + curatedSrc[1])();
+
+for (const c of CURATED) {
+  const file = path.join(ROOT, c.file);
+  if (!fs.existsSync(file)) throw new Error('CURATED lists ' + c.file + ', which does not exist');
+  const pl = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const tracks = (pl.videos || []).length;
+  const facts = (pl.videos || []).reduce((n, v) => n + (v.facts || []).length, 0);
+  if (tracks !== c.tracks || facts !== c.facts) {
+    throw new Error(
+      'card metadata for "' + c.slug + '" is stale: index.html says ' + c.tracks + ' tracks / ' +
+      c.facts + ' facts, but ' + c.file + ' has ' + tracks + ' / ' + facts
+    );
+  }
+}
+const slugs = CURATED.map((c) => c.slug);
+if (new Set(slugs).size !== slugs.length) throw new Error('duplicate slug in CURATED');
+
+const ASSETS = [...CURATED.map((c) => c.file), ...EXTRA_ASSETS];
 
 // Only the markup matters: a style="" mentioned inside a CSS or JS comment is not an
 // attribute, so strip those blocks before checking. A real style attribute would force
