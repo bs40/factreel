@@ -1,4 +1,10 @@
 <meta charset="utf-8" />
+<!-- Do NOT tighten this to no-referrer or same-origin. YouTube's embedded player
+     identifies the embedding site from the Referer header; without one it refuses to
+     start and shows "Video player configuration error / Error 153"
+     (debug code: embedder.identity.missing.referrer). strict-origin-when-cross-origin
+     sends the origin only — no path, no query — which is all the player needs. -->
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>FactReel — YouTube playlist with fact overlays</title>
 <style>

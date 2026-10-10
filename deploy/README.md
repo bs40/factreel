@@ -8,19 +8,27 @@ Total deployable: **~140 KB** across five files.
 
 ## Live
 
-**https://factreel.b-cdn.net/**
+**https://popupvideo.bs40.com/** (also https://factreel.b-cdn.net/)
 
 | Resource | |
 | --- | --- |
 | Storage zone | `factreel` — id `1786710`, region DE, host `storage.bunnycdn.com` |
 | Pull zone | `factreel` — id `6417230` |
-| Force SSL | on (`http://` → 301 → `https://`) |
-| Edge rules | 5 security headers, all live and verified |
+| Hostnames | `popupvideo.bs40.com` (Let's Encrypt cert, verified) and `factreel.b-cdn.net` |
+| DNS | Bunny DNS zone `913998` (bs40.com) — `CNAME popupvideo -> factreel.b-cdn.net`, TTL 3600 |
+| Force SSL | on for both hostnames (`http://` → 301 → `https://`) |
+| Edge rules | 5 security headers, all live and verified on both hostnames |
 
-Still optional: **Bunny Shield** (free tier, $0/pull zone) is *not* enabled. Turn it on from
-Pull Zone → Shield if you want the preconfigured WAF rules and two rate limits. It is left
-off deliberately — a WAF can block legitimate traffic, so it is worth enabling with your eyes
-on it rather than silently.
+Two things left off deliberately:
+
+- **Bunny Shield** (free tier, $0/pull zone). Pull Zone → Shield gives preconfigured WAF
+  rules and two rate limits. A WAF can block legitimate traffic, so it is worth enabling
+  with your eyes on it rather than silently.
+- **HSTS.** Now that a real domain is attached this is worth adding, as a sixth
+  `Set Response Header` edge rule: `Strict-Transport-Security: max-age=31536000`. Note what
+  it commits to — browsers that see it will refuse plain HTTP for this host for a year, and
+  you cannot retract that for clients who have already cached it. `includeSubDomains` buys
+  nothing here, since nothing sits under `popupvideo.bs40.com`.
 
 ---
 
@@ -81,12 +89,28 @@ Condition **Request URL → Match Any → `*`**.
 | --- | --- |
 | `Content-Security-Policy` | the contents of `deploy/csp-header.txt` |
 | `X-Content-Type-Options` | `nosniff` |
-| `Referrer-Policy` | `no-referrer` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` — **do not tighten, see below** |
 | `X-Frame-Options` | `DENY` |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` — **custom domain only**, and only once you are sure every subdomain can serve HTTPS |
+| `Strict-Transport-Security` | `max-age=31536000` — **custom domain only**, and note it commits browsers to HTTPS-only for a year with no retraction |
 
 Also enable **Force SSL** on the pull zone.
+
+### Referrer-Policy must not be tightened
+
+This was originally deployed as `no-referrer` and **broke playback**: YouTube's embedded
+player identifies the embedding site from the `Referer` header, and without one it refuses
+to start, showing *"Video player configuration error / Error 153"*.
+
+Confirmed directly against YouTube — requesting an embed URL with no `Referer` returns a page
+containing `EMBEDDER_IDENTITY_MISSING_REFERRER`; the same request with
+`Referer: https://popupvideo.bs40.com/` does not. `same-origin` fails the same way, since the
+player is cross-origin.
+
+`strict-origin-when-cross-origin` sends the origin only — no path, no query — which is all
+the player needs and leaks nothing meaningful. `index.html` also carries a matching
+`<meta name="referrer">` so the page still works if served without the header (locally, or
+if this rule is ever changed).
 
 ### About the CSP
 
