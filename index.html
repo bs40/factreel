@@ -27,7 +27,12 @@
   body { background: var(--bg); color: var(--text); }
 
   /* ---------- Layout ---------- */
-  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  /* The action bar is fixed to the bottom, so reserve its height at the end of the
+     editor. --actionbar-h is measured in JS because the bar wraps to a different
+     number of rows depending on viewport width; the fallback covers the two-row case
+     before the first measurement. */
+  .wrap { max-width: 920px; margin: 0 auto;
+    padding: 28px 20px calc(var(--actionbar-h, 116px) + 28px); }
   header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
   header.top h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
   header.top .sub { color: var(--muted); font-size: 13px; }
@@ -64,6 +69,28 @@
   .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
   .spacer { flex: 1; }
   .playfrom { color: var(--muted); font-size: 13px; }
+
+  /* Bottom-anchored play / load bar. Sits below #stage (z-index 1000), so it is
+     covered during playback rather than floating over the video. */
+  .actionbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .45);
+    padding: 12px 20px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .actionbar .toolbar { max-width: 920px; margin: 0 auto; }
+
+  /* On a phone the bar is permanently on screen, so keep it from eating the viewport.
+     The flex spacer is the main culprit: it forces a wrap straight after the playlist
+     picker, pushing the secondary buttons onto rows of their own. */
+  @media (max-width: 560px) {
+    .actionbar { padding: 8px 12px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+    .actionbar .toolbar { gap: 6px; }
+    .actionbar .spacer { display: none; }
+    .actionbar .startpicker { max-width: 38vw; }
+  }
   #startAt { max-width: 340px; min-width: 0; }
 
   /* ---------- Video editor cards ---------- */
@@ -229,18 +256,20 @@
 
   <div id="banner" class="banner"></div>
 
-  <div class="toolbar">
-    <button class="primary" id="play">▶ Play</button>
-    <label for="startAt" class="playfrom">from</label>
-    <select id="startAt" class="startpicker" title="Choose which track to start playback from"></select>
-    <div class="spacer"></div>
-    <label for="curated" class="playfrom">load</label>
-    <select id="curated" class="startpicker" title="Load one of the built-in playlists"></select>
-    <button class="ghost" id="loadExample">Load example</button>
-    <button class="ghost" id="importBtn">Import JSON</button>
-    <button class="ghost" id="exportBtn">Export JSON</button>
-    <button class="danger ghost" id="clearBtn">Clear</button>
-    <input type="file" id="importFile" accept="application/json" hidden />
+  <div class="actionbar">
+    <div class="toolbar">
+      <button class="primary" id="play">▶ Play</button>
+      <label for="startAt" class="playfrom">from</label>
+      <select id="startAt" class="startpicker" title="Choose which track to start playback from"></select>
+      <div class="spacer"></div>
+      <label for="curated" class="playfrom">load</label>
+      <select id="curated" class="startpicker" title="Load one of the built-in playlists"></select>
+      <button class="ghost" id="loadExample">Load example</button>
+      <button class="ghost" id="importBtn">Import JSON</button>
+      <button class="ghost" id="exportBtn">Export JSON</button>
+      <button class="danger ghost" id="clearBtn">Clear</button>
+      <input type="file" id="importFile" accept="application/json" hidden />
+    </div>
   </div>
 </div>
 
@@ -876,4 +905,13 @@ $('#exitBtn').addEventListener('click', exitPlayer);
 load();
 renderEditor();
 buildCuratedPicker();
+
+/* The action bar is fixed to the bottom of the viewport, so the editor has to reserve
+   exactly its height — which changes as the bar wraps to one, two or three rows. */
+const actionBar = $('.actionbar');
+const syncActionBarHeight = () =>
+  document.documentElement.style.setProperty('--actionbar-h', actionBar.offsetHeight + 'px');
+if (window.ResizeObserver) new ResizeObserver(syncActionBarHeight).observe(actionBar);
+else addEventListener('resize', syncActionBarHeight);
+syncActionBarHeight();
 </script>
