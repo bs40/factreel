@@ -11,3 +11,6 @@ dist/
 # Secrets
 .env
 .env.*
+
+# Research notes and scratch scripts stay on this machine
+research/
